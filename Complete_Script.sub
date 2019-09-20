@@ -1,0 +1,93 @@
+#!/bin/bash
+#PBS -N Job_name
+#PBS -l select=1:ncpus=16:mpiprocs=16
+#PBS -q one_day
+#PBS -m a
+#PBS -M username@examplemail.co.uk
+#PBS -j oe
+#PBS -W sandbox=PRIVATE
+#PBS -k n
+ln -s $PWD $PBS_O_WORKDIR/$PBS_JOBID
+cd $PBS_O_WORKDIR
+export cpus=`cat $PBS_NODEFILE | wc -l`
+
+## #################################################
+## ###### Making New Working Directory #############
+## #################################################
+
+mkdir -p ./Assignment
+tar xvf /PATH/TO/dataForAssignment.tar.gz -C ./Assignment
+cd ./Assignment
+
+mkdir -p ./FastQC_Reports
+cd ./FastQC_Reports
+module load FastQC
+
+fastqc -o ./ ../dataForAssignment/*.fq
+
+module purge
+
+cd ../
+
+module load STAR/2.6.0c-foss-2018a
+
+## ################################################################
+## ####### Making Directories for STAR output files ###############
+## ################################################################
+
+mkdir -p -m 777 ./STAR_Output_1
+mkdir -p -m 777 ./STAR_Output_2
+mkdir -p -m 777 ./STAR_Output_3
+mkdir -p -m 777 ./STAR_Output_4
+mkdir -p -m 777 ./STAR_Output_5
+mkdir -p -m 777 ./STAR_Output_6
+
+## ################################################################
+## ######## Making Directory for STAR Index  ######################
+## ################################################################
+
+mkdir -p -m 777 ./Index
+
+## ################################################################
+## ######## Mapping and Alignment with STAR #######################
+## ################################################################
+
+STAR --runMode genomeGenerate --genomeDir ./Index --genomeFastaFiles ./dataForAssignment/potato_chr12.fa
+
+STAR --genomeDir ./Index --outFileNamePrefix ./STAR_Output_1/ --readFilesIn ./dataForAssignment/ST_w0_R1.chr12.r1.fq ./dataForAssignment/ST_w0_R1.chr12.r2.fq --runThreadN 16
+STAR --genomeDir ./Index --outFileNamePrefix ./STAR_Output_2/ --readFilesIn ./dataForAssignment/ST_w0_R2.chr12.r1.fq ./dataForAssignment/ST_w0_R2.chr12.r2.fq --runThreadN 16
+STAR --genomeDir ./Index --outFileNamePrefix ./STAR_Output_3/ --readFilesIn ./dataForAssignment/ST_w0_R3.chr12.r1.fq ./dataForAssignment/ST_w0_R3.chr12.r2.fq --runThreadN 16
+STAR --genomeDir ./Index --outFileNamePrefix ./STAR_Output_4/ --readFilesIn ./dataForAssignment/ST_w1_R1.chr12.r1.fq ./dataForAssignment/ST_w1_R1.chr12.r2.fq --runThreadN 16
+STAR --genomeDir ./Index --outFileNamePrefix ./STAR_Output_5/ --readFilesIn ./dataForAssignment/ST_w1_R2.chr12.r1.fq ./dataForAssignment/ST_w1_R2.chr12.r2.fq --runThreadN 16
+STAR --genomeDir ./Index --outFileNamePrefix ./STAR_Output_6/ --readFilesIn ./dataForAssignment/ST_w1_R3.chr12.r1.fq ./dataForAssignment/ST_w1_R3.chr12.r2.fq --runThreadN 16
+
+module purge
+
+## #################################################################
+## ##################### HTSeq Counts ##############################
+## #################################################################
+
+module load HTSeq
+
+module load HTSeq/0.9.1-foss-2016b-Python-2.7.12
+
+htseq-count -t gene -i ID -s no ./STAR_Output_1/Aligned.out.sam ./STAR_Output_2/Aligned.out.sam ./STAR_Output_3/Aligned.out.sam ./STAR_Output_4/Aligned.out.sam ./STAR_Output_5/Aligned.out.sam ./STAR_Output_6/Aligned.out.sam  ./dataForAssignment/potato_annot_chr12.gff >output.txt
+
+module purge
+
+
+## #################################################################
+## ###################### END CODE #################################
+## #################################################################
+
+rm $PBS_O_WORKDIR/$PBS_JOBID
+
+
+
+
+
+
+
+
+
+
